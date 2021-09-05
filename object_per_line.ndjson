@@ -1,0 +1,3 @@
+{"a": "field a0","b": [{"value": "field b2"}, {"value": "field b xxx"}],"c": [{"value": "field c0"}, {"value": "field c xxx"}]}
+{"a": "field a1","b": [{"value": "field b1"}],"c": [{"value": "field c1"}]}
+{"a": "field a2","b": [{"value": "field b2"}, {"value": "field b xxx"}],"c": {"value": "field c2"}, "d": 42}
