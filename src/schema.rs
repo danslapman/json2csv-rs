@@ -4,7 +4,7 @@ use std::array::IntoIter;
 use std::collections::HashMap;
 use std::iter::FromIterator;
 
-#[derive(Clone, Eq, PartialEq, Hash)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub enum JsonPathElement {
     Key(String),
     Iterator
@@ -12,7 +12,7 @@ pub enum JsonPathElement {
 
 pub type JsonPath = Vec<JsonPathElement>;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum JsonSchemaTree {
     PathNode(JsonPathElement, Vec<JsonSchemaTree>),
     PathEnd
@@ -42,12 +42,10 @@ impl JsonSchemaTree {
 }
 
 fn to_schema_tree(path: JsonPath) -> JsonSchemaTree {
-    if path.is_empty() {
-        JsonSchemaTree::PathEnd
-    } else {
-        let head = (*path.first().unwrap()).clone();
-        let tail = path.clone().split_off(1);
-        JsonSchemaTree::PathNode(head, vec![to_schema_tree(tail)])
+    match path.as_slice() {
+        [] => JsonSchemaTree::PathEnd,
+        [head, tail @ ..] =>
+            JsonSchemaTree::PathNode(head.clone(), vec![to_schema_tree(tail.to_vec())])
     }
 }
 
@@ -167,7 +165,7 @@ pub fn json_path_string(path: JsonPath) -> String {
 
 #[cfg(test)]
 mod schema_tests {
-    use crate::schema::{JsonPathElement::*, JsonSchemaTree::*};
+    use crate::schema::{JsonPathElement::*, JsonSchemaTree::*, append_path, to_schema_tree};
 
     #[test]
     fn has_same_root_single() {
@@ -189,5 +187,45 @@ mod schema_tests {
         assert!(!sut.has_same_root(&vec![Key("yoba".to_string())]));
         assert!(!sut.has_same_root(&vec![Iterator]));
         assert!(sut.has_same_root(&vec![Key("peka".to_string()), Iterator]));
+    }
+
+    #[test]
+    fn add_path() {
+        let tree = PathNode(Key("peka".to_string()), vec![PathEnd]);
+        let path = vec![Key("peka".to_string()), Key("yoba".to_string())];
+        let sut = tree.add_path(&path);
+        assert_eq!(sut,
+                   PathNode(
+                       Key("peka".to_string()),
+                       vec![
+                           PathNode(Key("yoba".to_string()), vec![PathEnd]),
+                           PathEnd
+                       ])
+        );
+    }
+
+    #[test]
+    fn append_path_test() {
+        let schema = vec![PathNode(Key("peka".to_string()), vec![PathEnd])];
+        let path = vec![Key("yoba".to_string())];
+        let sut = append_path(schema, &path);
+        assert_eq!(sut,
+                   vec![
+                       PathNode(Key("yoba".to_string()), vec![PathEnd]),
+                       PathNode(Key("peka".to_string()), vec![PathEnd])
+                   ]
+        );
+    }
+
+    #[test]
+    fn json_path_to_schema_tree() {
+        let jp = vec![Key("peka".to_string()), Iterator, Key("yoba".to_string())];
+        let sut = to_schema_tree(jp);
+        assert_eq!(sut,
+                   PathNode(
+                       Key("peka".to_string()),
+                       vec![PathNode(Iterator, vec![PathNode(Key("yoba".to_string()), vec![PathEnd])])]
+                   )
+        );
     }
 }

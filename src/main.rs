@@ -23,6 +23,8 @@ fn main() -> io::Result<()> {
         (about: "Json -> CSV conversion utility")
         (@arg json_file: +required "Newline-delimited JSON input file name")
         (@arg csv_file: +required "CSV output file name")
+        (@arg flatten: -f --flatten "Flatten array iterators")
+        (@arg intersect: -i --intersect "\"Inner join\" fields while constructing schema")
     ).get_matches();
 
     let json_file_name = value_t!(json2csv_app_matches, "json_file", String).expect("json_file");
@@ -85,12 +87,13 @@ fn compute_header_multiline(combine: PathSetCombine, file_name: &String) -> io::
 fn extract_lines(mk_sep_string: fn(Vec<String>) -> String, flat: bool, schema: &JsonSchema, columns: &Vec<String>, line_value: Value) -> Vec<String> {
     let tree = extract(schema, line_value);
     let tuples = generate_tuples(flat, tree);
+    println!("{:?}", tuples);
     tuples.into_iter().map(|hm|
         mk_sep_string(
             columns
                 .iter()
-                .map(|col| hm.get(col).map(|v| v.clone()).unwrap_or_default())
-                .map(show_value).collect::<Vec<_>>()
+                .map(|col| hm.get(col).cloned().map(show_value).unwrap_or_default())
+                .collect()
         )
     ).collect()
 }
