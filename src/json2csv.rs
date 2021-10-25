@@ -1,13 +1,10 @@
 use crate::schema::{JsonPathElement, JsonPath};
 use serde_json::Value;
-use std::array::IntoIter;
 use std::collections::HashSet;
-use std::iter::FromIterator;
 
 fn prepend(prefix: JsonPathElement, path: HashSet<JsonPath>) -> HashSet<JsonPath> {
     if path.is_empty() {
-        //Rewrite using https://github.com/rust-lang/rust/pull/84111 after 1.56.0 is out
-        HashSet::from_iter(IntoIter::new([vec![prefix]]))
+        HashSet::from([vec![prefix]])
     } else {
         path.into_iter().map(|mut p| {
             p.insert(0, prefix.clone());

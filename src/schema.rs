@@ -1,8 +1,6 @@
 use crate::utils::{cross_fold, dedup_vec};
 use serde_json::Value;
-use std::array::IntoIter;
 use std::collections::HashMap;
-use std::iter::FromIterator;
 
 #[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub enum JsonPathElement {
@@ -119,19 +117,16 @@ fn gen_maps(flat: bool, jp: JsonPath, jvt: JsonValueTree) -> Vec<HashMap<String,
         JsonValueTree::SingleValue(jpe, value) => {
             let mut jp1 = jp.clone();
             jp1.push(jpe);
-            //Rewrite using https://github.com/rust-lang/rust/pull/84111 after 1.56.0 is out
-            vec![HashMap::from_iter(IntoIter::new([
-                (json_path_string(jp1.clone()), value)
-            ]))]
+            vec![HashMap::from([(json_path_string(jp1.clone()), value)])]
         },
         JsonValueTree::ValueArray(values) => {
             let mut jp1 = jp.clone();
             if !flat {
                 jp1.push(JsonPathElement::Iterator);
             }
-            values.into_iter().map(|v| HashMap::from_iter(IntoIter::new([
+            values.into_iter().map(|v| HashMap::from([
                 (json_path_string(jp1.clone()), v)
-            ]))).collect()
+            ])).collect()
         },
         JsonValueTree::TreeArray(trees) => {
             let mut jp1 = jp.clone();
