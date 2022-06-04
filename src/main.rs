@@ -7,7 +7,7 @@ pub mod schema;
 pub mod utils;
 
 use crate::json2csv::{compute_paths, show_value};
-use crate::schema::{extract, generate_tuples, json_path_string, to_schema, JsonPath, JsonSchema};
+use crate::schema::{drop_iterators, extract, generate_tuples, json_path_string, to_schema, JsonPath, JsonSchema};
 use itertools::Itertools;
 use serde_json::Value;
 use std::collections::HashSet;
@@ -31,12 +31,22 @@ fn main() -> io::Result<()> {
 
     let json_file_name = value_t!(json2csv_app_matches, "json_file", String).expect("json_file");
     let csv_file_name = value_t!(json2csv_app_matches, "csv_file", String).expect("csv_file");
+    let flatten = value_t!(json2csv_app_matches, "flatten", bool).unwrap_or(false);
     let intersect = value_t!(json2csv_app_matches, "intersect", bool).unwrap_or(false);
 
     let header = compute_header_multiline(if intersect { intersect_or_non_empty } else { union }, &json_file_name)?;
     let schema = to_schema(header.clone());
 
-    let columns = header.into_iter().unique().map(json_path_string).collect::<Vec<_>>();
+    let columns = if flatten {
+        header
+            .into_iter()
+            .unique()
+            .map(drop_iterators)
+            .map(json_path_string)
+            .collect::<Vec<_>>()
+    } else {
+        header.into_iter().unique().map(json_path_string).collect::<Vec<_>>()
+    };
 
     let json_file = File::open(json_file_name)?;
     let reader = BufReader::new(json_file);
@@ -50,7 +60,7 @@ fn main() -> io::Result<()> {
     for line in reader.lines() {
         let line_value =
             serde_json::from_str::<Value>(line?.as_str()).expect(format!("Can't parse line {}", n).as_str());
-        let lines = extract_lines(|strs| strs.join(";"), false, &schema, &columns, line_value);
+        let lines = extract_lines(|strs| strs.join(";"), flatten, &schema, &columns, line_value);
         for line in lines {
             writer.write_all(format!("{}\n", line).as_ref())?;
         }

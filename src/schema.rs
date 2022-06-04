@@ -181,6 +181,15 @@ pub fn json_path_string(path: JsonPath) -> String {
         .join(".")
 }
 
+pub fn drop_iterators(path: JsonPath) -> JsonPath {
+    path.into_iter()
+        .filter(|jpe| match jpe {
+            JsonPathElement::Key(_) => true,
+            JsonPathElement::Iterator => false,
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod schema_tests {
     use crate::schema::{
