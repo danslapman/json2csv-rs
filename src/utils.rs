@@ -29,15 +29,16 @@ pub fn x_vec<T: Clone>(f: fn(T, T) -> T, lhs: Vec<T>, rhs: Vec<T>) -> Vec<T> {
     }
 }
 
-pub fn cross_fold<K: Hash + Eq, V>(data: Vec<Vec<HashMap<K, V>>>) -> Vec<HashMap<K, V>> {
-    data.into_iter()
-        .map(|v| v.into_iter().fold(HashMap::new(), |acc, hm| acc.into_iter().chain(hm).collect()))
-        .collect()
+pub fn cross_fold<K: Hash + Eq + Clone, V: Clone>(data: Vec<Vec<HashMap<K, V>>>) -> Vec<HashMap<K, V>> {
+    data.into_iter().fold(vec![], |acc, hm| {
+        x_vec(|lhs, rhs| lhs.into_iter().chain(rhs).collect(), acc, hm)
+    })
 }
 
 #[cfg(test)]
 mod utils_tests {
-    use crate::utils::x_vec;
+    use crate::utils::{cross_fold, x_vec};
+    use std::collections::HashMap;
 
     #[test]
     fn x_vec_simple() {
@@ -47,5 +48,37 @@ mod utils_tests {
         let result = x_vec(|lhs, rhs| lhs + rhs, v1, v2);
 
         assert_eq!(result, vec![5, 6, 7, 6, 7, 8, 7, 8, 9]);
+    }
+
+    #[test]
+    fn cross_fold_single_test() {
+        let v = vec![vec![HashMap::from([("k1", "v1")]), HashMap::from([("k2", "v2")])]];
+
+        let result = cross_fold(v);
+
+        assert_eq!(
+            result,
+            vec![HashMap::from([("k1", "v1")]), HashMap::from([("k2", "v2")])]
+        );
+    }
+
+    #[test]
+    fn cross_fold_multiple_test() {
+        let v = vec![
+            vec![HashMap::from([("k1", "v1")]), HashMap::from([("k2", "v2")])],
+            vec![HashMap::from([("k3", "v3")]), HashMap::from([("k4", "v4")])],
+        ];
+
+        let result = cross_fold(v);
+
+        assert_eq!(
+            result,
+            vec![
+                HashMap::from([("k1", "v1"), ("k3", "v3")]),
+                HashMap::from([("k1", "v1"), ("k4", "v4")]),
+                HashMap::from([("k2", "v2"), ("k3", "v3")]),
+                HashMap::from([("k2", "v2"), ("k4", "v4")])
+            ]
+        );
     }
 }
