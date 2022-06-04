@@ -31,8 +31,9 @@ fn main() -> io::Result<()> {
 
     let json_file_name = value_t!(json2csv_app_matches, "json_file", String).expect("json_file");
     let csv_file_name = value_t!(json2csv_app_matches, "csv_file", String).expect("csv_file");
+    let intersect = value_t!(json2csv_app_matches, "intersect", bool).unwrap_or(false);
 
-    let header = compute_header_multiline(union, &json_file_name)?;
+    let header = compute_header_multiline(if intersect { intersect_or_non_empty } else { union }, &json_file_name)?;
     let schema = to_schema(header.clone());
 
     let columns = header.into_iter().unique().map(json_path_string).collect::<Vec<_>>();
