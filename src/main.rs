@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate clap;
 extern crate serde_json;
 
@@ -8,6 +7,7 @@ pub mod utils;
 
 use crate::json2csv::{compute_paths, show_value};
 use crate::schema::{drop_iterators, extract, generate_tuples, json_path_string, to_schema, JsonPath, JsonSchema};
+use clap::Parser;
 use itertools::Itertools;
 use serde_json::Value;
 use std::collections::HashSet;
@@ -17,27 +17,33 @@ use std::io::{self, prelude::*, BufReader, LineWriter};
 type PathSet = HashSet<JsonPath>;
 type PathSetCombine = fn(PathSet, PathSet) -> PathSet;
 
+#[derive(Parser, Debug)]
+#[clap(
+    author = "Daniel Slapman <danslapman@gmail.com>",
+    version = "0.1",
+    about = "Json -> CSV conversion utility"
+)]
+struct Args {
+    #[clap(help = "Newline-delimited JSON input file name")]
+    json_file: String,
+    #[clap(help = "CSV output file name")]
+    csv_file: String,
+    #[clap(short, long, help = "Flatten array iterators")]
+    flatten: bool,
+    #[clap(short, long, help = "\"Inner join\" fields while constructing schema")]
+    intersect: bool,
+}
+
 fn main() -> io::Result<()> {
-    let json2csv_app_matches = clap_app!(j2c =>
-        (version: "0.1")
-        (author: "Daniel Slapman <danslapman@gmail.com>")
-        (about: "Json -> CSV conversion utility")
-        (@arg json_file: +required "Newline-delimited JSON input file name")
-        (@arg csv_file: +required "CSV output file name")
-        (@arg flatten: -f --flatten "Flatten array iterators")
-        (@arg intersect: -i --intersect "\"Inner join\" fields while constructing schema")
-    )
-    .get_matches();
+    let args = Args::parse();
 
-    let json_file_name = value_t!(json2csv_app_matches, "json_file", String).expect("json_file");
-    let csv_file_name = value_t!(json2csv_app_matches, "csv_file", String).expect("csv_file");
-    let flatten = value_t!(json2csv_app_matches, "flatten", bool).unwrap_or(false);
-    let intersect = value_t!(json2csv_app_matches, "intersect", bool).unwrap_or(false);
-
-    let header = compute_header_multiline(if intersect { intersect_or_non_empty } else { union }, &json_file_name)?;
+    let header = compute_header_multiline(
+        if args.intersect { intersect_or_non_empty } else { union },
+        &(args.json_file),
+    )?;
     let schema = to_schema(header.clone());
 
-    let columns = if flatten {
+    let columns = if args.flatten {
         header
             .into_iter()
             .unique()
@@ -48,10 +54,10 @@ fn main() -> io::Result<()> {
         header.into_iter().unique().map(json_path_string).collect::<Vec<_>>()
     };
 
-    let json_file = File::open(json_file_name)?;
+    let json_file = File::open(args.json_file)?;
     let reader = BufReader::new(json_file);
 
-    let csv_file = File::create(csv_file_name)?;
+    let csv_file = File::create(args.csv_file)?;
     let mut writer = LineWriter::new(csv_file);
 
     writer.write_all(format!("{}\n", columns.join(";")).as_ref())?;
@@ -60,7 +66,7 @@ fn main() -> io::Result<()> {
     for line in reader.lines() {
         let line_value =
             serde_json::from_str::<Value>(line?.as_str()).expect(format!("Can't parse line {}", n).as_str());
-        let lines = extract_lines(|strs| strs.join(";"), flatten, &schema, &columns, line_value);
+        let lines = extract_lines(|strs| strs.join(";"), args.flatten, &schema, &columns, line_value);
         for line in lines {
             writer.write_all(format!("{}\n", line).as_ref())?;
         }
