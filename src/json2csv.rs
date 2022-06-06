@@ -1,4 +1,5 @@
 use crate::schema::{JsonPath, JsonPathElement};
+use rayon::prelude::*;
 use serde_json::Value;
 use std::collections::HashSet;
 
@@ -6,7 +7,7 @@ fn prepend(prefix: JsonPathElement, path: HashSet<JsonPath>) -> HashSet<JsonPath
     if path.is_empty() {
         HashSet::from([vec![prefix]])
     } else {
-        path.into_iter()
+        path.into_par_iter()
             .map(|mut p| {
                 p.insert(0, prefix.clone());
                 p
