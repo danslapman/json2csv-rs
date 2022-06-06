@@ -1,4 +1,5 @@
 use crate::utils::{cross_fold, dedup_vec};
+use rayon::prelude::*;
 use serde_json::Value;
 use std::collections::HashMap;
 
@@ -49,7 +50,7 @@ fn to_schema_tree(path: JsonPath) -> JsonSchemaTree {
 }
 
 fn append_path(mut schema: JsonSchema, path: &JsonPath) -> JsonSchema {
-    if schema.iter().any(|tr| tr.has_same_root(path)) {
+    if schema.par_iter().any(|tr| tr.has_same_root(path)) {
         let mut out: JsonSchema = Vec::new();
 
         for tr in schema {
@@ -90,7 +91,7 @@ fn extract_tree(value: Value, schema_tree: JsonSchemaTree) -> Option<JsonValueTr
                 .get(k.clone())
                 .map(|v| {
                     nodes
-                        .iter()
+                        .par_iter()
                         .flat_map(|ch| extract_tree(v.clone(), ch.clone()))
                         .collect::<Vec<_>>()
                 })
@@ -105,10 +106,10 @@ fn extract_tree(value: Value, schema_tree: JsonSchemaTree) -> Option<JsonValueTr
                 .map(|values| {
                     values
                         .clone()
-                        .iter()
+                        .par_iter()
                         .map(|v| {
                             nodes
-                                .iter()
+                                .par_iter()
                                 .flat_map(|ch| extract_tree(v.clone(), ch.clone()))
                                 .collect::<Vec<_>>()
                         })
@@ -121,7 +122,7 @@ fn extract_tree(value: Value, schema_tree: JsonSchemaTree) -> Option<JsonValueTr
 
 pub fn extract(schema: &JsonSchema, value: Value) -> JsonTree {
     schema
-        .iter()
+        .par_iter()
         .flat_map(|tree| extract_tree(value.clone(), tree.clone()))
         .collect()
 }
@@ -131,7 +132,12 @@ fn gen_maps(flat: bool, jp: JsonPath, jvt: JsonValueTree) -> Vec<HashMap<String,
         JsonValueTree::ValueRoot(jpe, trees) => {
             let mut jp1 = jp.clone();
             jp1.push(jpe);
-            cross_fold(trees.into_iter().map(|el| gen_maps(flat, jp1.clone(), el)).collect())
+            cross_fold(
+                trees
+                    .into_par_iter()
+                    .map(|el| gen_maps(flat, jp1.clone(), el))
+                    .collect(),
+            )
         }
         JsonValueTree::SingleValue(jpe, value) => {
             let mut jp1 = jp.clone();
@@ -144,7 +150,7 @@ fn gen_maps(flat: bool, jp: JsonPath, jvt: JsonValueTree) -> Vec<HashMap<String,
                 jp1.push(JsonPathElement::Iterator);
             }
             values
-                .into_iter()
+                .into_par_iter()
                 .map(|v| HashMap::from([(json_path_string(jp1.clone()), v)]))
                 .collect()
         }
@@ -154,10 +160,10 @@ fn gen_maps(flat: bool, jp: JsonPath, jvt: JsonValueTree) -> Vec<HashMap<String,
                 jp1.push(JsonPathElement::Iterator);
             }
             trees
-                .into_iter()
+                .into_par_iter()
                 .flat_map(|jt| {
                     cross_fold(
-                        jt.into_iter()
+                        jt.into_par_iter()
                             .map(|jvt| gen_maps(flat, jp1.clone(), jvt))
                             .collect::<Vec<_>>(),
                     )
@@ -168,11 +174,11 @@ fn gen_maps(flat: bool, jp: JsonPath, jvt: JsonValueTree) -> Vec<HashMap<String,
 }
 
 pub fn generate_tuples(flat: bool, tree: JsonTree) -> Vec<HashMap<String, Value>> {
-    cross_fold(tree.into_iter().map(|jvt| gen_maps(flat, vec![], jvt)).collect())
+    cross_fold(tree.into_par_iter().map(|jvt| gen_maps(flat, vec![], jvt)).collect())
 }
 
 pub fn json_path_string(path: JsonPath) -> String {
-    path.iter()
+    path.par_iter()
         .map(|pe| match pe {
             JsonPathElement::Key(k) => k,
             JsonPathElement::Iterator => "$",
@@ -182,7 +188,7 @@ pub fn json_path_string(path: JsonPath) -> String {
 }
 
 pub fn drop_iterators(path: JsonPath) -> JsonPath {
-    path.into_iter()
+    path.into_par_iter()
         .filter(|jpe| match jpe {
             JsonPathElement::Key(_) => true,
             JsonPathElement::Iterator => false,

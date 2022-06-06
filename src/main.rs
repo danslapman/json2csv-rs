@@ -1,4 +1,5 @@
 extern crate clap;
+extern crate rayon;
 extern crate serde_json;
 
 pub mod json2csv;
@@ -9,6 +10,7 @@ use crate::json2csv::{compute_paths, show_value};
 use crate::schema::{drop_iterators, extract, generate_tuples, json_path_string, to_schema, JsonPath, JsonSchema};
 use clap::Parser;
 use itertools::Itertools;
+use rayon::prelude::*;
 use serde_json::Value;
 use std::collections::HashSet;
 use std::fs::File;
@@ -80,7 +82,7 @@ fn intersect_or_non_empty(lhs: PathSet, rhs: PathSet) -> PathSet {
     match (lhs, rhs) {
         (l, r) if l.is_empty() => r,
         (l, r) if r.is_empty() => l,
-        (l, r) => l.into_iter().filter(|el| r.contains(el)).collect(),
+        (l, r) => l.into_par_iter().filter(|el| r.contains(el)).collect(),
     }
 }
 
@@ -117,11 +119,11 @@ fn extract_lines(
     let tuples = generate_tuples(flat, tree);
 
     tuples
-        .into_iter()
+        .into_par_iter()
         .map(|hm| {
             mk_sep_string(
                 columns
-                    .iter()
+                    .par_iter()
                     .map(|col| hm.get(col).cloned().map(show_value).unwrap_or_default())
                     .collect(),
             )
