@@ -1,0 +1,16 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macOS-latest, windows-latest ]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
