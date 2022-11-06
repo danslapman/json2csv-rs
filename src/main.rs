@@ -9,6 +9,7 @@ pub mod utils;
 use crate::json2csv::{compute_paths, show_value};
 use crate::schema::{drop_iterators, extract, generate_tuples, json_path_string, to_schema, JsonPath, JsonSchema};
 use clap::Parser;
+use indicatif::ProgressBar;
 use itertools::Itertools;
 use rayon::prelude::*;
 use serde_json::Value;
@@ -39,7 +40,7 @@ struct Args {
 fn main() -> io::Result<()> {
     let args = Args::parse();
 
-    let header = compute_header_multiline(
+    let (header, number_of_lines) = compute_header_multiline(
         if args.intersect { intersect_or_non_empty } else { union },
         &(args.json_file),
     )?;
@@ -65,6 +66,7 @@ fn main() -> io::Result<()> {
     writer.write_all(format!("{}\n", columns.join(";")).as_ref())?;
 
     let mut n = 0;
+    let bar = ProgressBar::new(number_of_lines);
     for line in reader.lines() {
         let line_value =
             serde_json::from_str::<Value>(line?.as_str()).expect(format!("Can't parse line {}", n).as_str());
@@ -73,8 +75,10 @@ fn main() -> io::Result<()> {
             writer.write_all(format!("{}\n", line).as_ref())?;
         }
         n += 1;
+        bar.inc(1);
     }
 
+    bar.finish();
     writer.flush()
 }
 
@@ -92,19 +96,21 @@ fn union(lhs: PathSet, rhs: PathSet) -> PathSet {
     result
 }
 
-fn compute_header_multiline(combine: PathSetCombine, file_name: &String) -> io::Result<Vec<JsonPath>> {
+fn compute_header_multiline(combine: PathSetCombine, file_name: &String) -> io::Result<(Vec<JsonPath>, u64)> {
     let json_file = File::open(file_name)?;
     let reader = BufReader::new(json_file);
 
     let mut pathes = HashSet::new();
+    let mut n = 0;
 
     for line in reader.lines() {
-        let parsed = serde_json::from_str::<Value>(line?.as_str())?;
+        let parsed = serde_json::from_str::<Value>(line?.as_str()).expect(format!("Can't parse line {}", n).as_str());
         let header = compute_paths(true, parsed).expect("unsupported line contents");
         pathes = combine(pathes, header);
+        n += 1;
     }
 
-    Ok(pathes.into_iter().collect::<Vec<_>>())
+    Ok((pathes.into_iter().collect::<Vec<_>>(), n))
 }
 
 fn extract_lines(
