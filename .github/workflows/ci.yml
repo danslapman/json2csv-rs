@@ -14,7 +14,7 @@ jobs:
             asset_name: json2csv-linux-amd64
           - os: windows-latest
             artifact_name: json2csv-rs.exe
-            asset_name: json2csv-windows-amd64
+            asset_name: json2csv-windows-amd64.exe
           - os: macos-latest
             artifact_name: json2csv-rs
             asset_name: json2csv-macos-amd64
