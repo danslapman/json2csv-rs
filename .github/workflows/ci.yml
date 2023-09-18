@@ -19,7 +19,7 @@ jobs:
             artifact_name: json2csv-rs
             asset_name: json2csv-macos-amd64
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
