@@ -2,13 +2,13 @@
 name = "json2csv-rs"
 version = "0.1.0"
 authors = ["Daniel Slapman <danslapman@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-clap = {version = "3.*", features = ["derive"]}
+clap = {version = "4.*", features = ["derive"]}
 serde_json = "1.0.*"
-itertools = "0.10.*"
+itertools = "0.12.*"
 rayon = "1.*"
 indicatif = "0.17.*"
