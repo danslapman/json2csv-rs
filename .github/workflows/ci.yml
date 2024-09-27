@@ -15,9 +15,12 @@ jobs:
           - os: windows-latest
             artifact_name: json2csv-rs.exe
             asset_name: json2csv-windows-amd64.exe
-          - os: macos-latest
+          - os: macos-13
             artifact_name: json2csv-rs
             asset_name: json2csv-macos-amd64
+          - os: macos-latest
+            artifact_name: json2csv-rs
+            asset_name: json2csv-macos-arm
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
