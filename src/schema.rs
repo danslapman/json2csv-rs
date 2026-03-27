@@ -11,7 +11,7 @@ pub enum JsonPathElement {
 
 pub type JsonPath = Vec<JsonPathElement>;
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Hash, Debug)]
 pub enum JsonSchemaTree {
     PathNode(JsonPathElement, Vec<JsonSchemaTree>),
     PathEnd,

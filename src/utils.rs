@@ -1,15 +1,14 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
-pub fn dedup_vec<T: PartialEq>(vec: Vec<T>) -> Vec<T> {
-    let mut output: Vec<T> = Vec::new();
-
-    for el in vec.into_iter() {
-        if !output.contains(&el) {
+pub fn dedup_vec<T: Hash + Eq + Clone>(vec: Vec<T>) -> Vec<T> {
+    let mut seen = HashSet::with_capacity(vec.len());
+    let mut output = Vec::with_capacity(vec.len());
+    for el in vec {
+        if seen.insert(el.clone()) {
             output.push(el);
         }
     }
-
     output
 }
 
@@ -37,8 +36,14 @@ pub fn cross_fold<K: Hash + Eq + Clone, V: Clone>(data: Vec<Vec<HashMap<K, V>>>)
 
 #[cfg(test)]
 mod utils_tests {
-    use crate::utils::{cross_fold, x_vec};
+    use crate::utils::{cross_fold, dedup_vec, x_vec};
     use std::collections::HashMap;
+
+    #[test]
+    fn dedup_vec_test() {
+        assert_eq!(dedup_vec(vec![1, 2, 1, 3, 2]), vec![1, 2, 3]);
+        assert_eq!(dedup_vec::<i32>(vec![]), Vec::<i32>::new());
+    }
 
     #[test]
     fn x_vec_simple() {
